@@ -11,7 +11,9 @@ jobs:
       run: Invoke-WebRequest -Uri "https://ngrok.com/download" -OutFile "ngrok.zip"
 
     - name: Extract Ngrok
-      run: Expand-Archive -Path "ngrok.zip" -DestinationPath "ngrok"
+      run: |
+        Expand-Archive -Path "ngrok.zip" -DestinationPath "ngrok" -Force
+      shell: pwsh
 
     - name: Check Ngrok Version
       run: .\ngrok\ngrok.exe version
@@ -24,7 +26,8 @@ jobs:
           Invoke-WebRequest -Uri "https://ngrok.com/download" -OutFile "ngrok.zip"
           Expand-Archive -Path "ngrok.zip" -DestinationPath "ngrok" -Force
         }
-    
+      shell: pwsh
+
     - name: Authenticate Ngrok
       run: .\ngrok\ngrok.exe authtoken $Env:NGROK_AUTH_TOKEN
       env:
@@ -35,6 +38,7 @@ jobs:
         Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name "fDenyTSConnections" -Value 0
         Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
         Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -Name "UserAuthentication" -Value 1
+      shell: pwsh
 
     - name: Create Local User (For Self-Hosted Runner Only)
       run: |
@@ -46,3 +50,4 @@ jobs:
 
     - name: Create Tunnel with Ngrok
       run: .\ngrok\ngrok.exe tcp 3389
+      shell: pwsh
