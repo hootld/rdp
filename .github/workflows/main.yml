@@ -7,49 +7,63 @@ jobs:
     runs-on: windows-latest
 
     steps:
-    - name: Download Latest Ngrok
-      run: |
-        Invoke-WebRequest -Uri "https://ngrok.com/download" -OutFile "ngrok.zip"
-      shell: pwsh
+      - name: Clean previous Ngrok installation
+        run: |
+          if (Test-Path -LiteralPath "ngrok.zip") { Remove-Item -LiteralPath "ngrok.zip" -Force }
+          if (Test-Path -LiteralPath "ngrok") { Remove-Item -LiteralPath "ngrok" -Recursive -Force }
+        shell: pwsh
 
-    - name: Extract Ngrok Using PowerShell 5
-      run: |
-        powershell.exe -ExecutionPolicy Bypass -Command "Expand-Archive -Path 'ngrok.zip' -DestinationPath 'ngrok' -Force"
-      shell: pwsh
+      - name: Download Latest Ngrok
+        run: |
+          Invoke-WebRequest -Uri "https://ngrok-agent.s3.amazonaws.com/ngrok-stable-windows-amd64.zip" -OutFile "ngrok.zip" -UseBasicParsing
+        shell: pwsh
 
-    - name: Verify Ngrok Extraction
-      run: |
-        if (!(Test-Path ".\ngrok\ngrok.exe")) {
-          Write-Host "Ngrok extraction failed. Trying alternate method..."
-          tar -xf ngrok.zip -C ngrok
-        }
-      shell: pwsh
+      - name: Create Ngrok directory
+        run: |
+          if (!(Test-Path -LiteralPath "ngrok")) {
+            New-Item -ItemType Directory -Path "ngrok" -Force
+          }
+        shell: pwsh
 
-    - name: Check Ngrok Version
-      run: .\ngrok\ngrok.exe version
-      shell: pwsh
+      - name: Extract Ngrok
+        run: |
+          Expand-Archive -LiteralPath 'ngrok.zip' -DestinationPath 'ngrok' -Force
+        shell: pwsh
 
-    - name: Authenticate Ngrok
-      run: .\ngrok\ngrok.exe authtoken $Env:NGROK_AUTH_TOKEN
-      env:
-        NGROK_AUTH_TOKEN: ${{ secrets.NGROK_AUTH_TOKEN }}
-      shell: pwsh
+      - name: Verify Ngrok Executable
+        run: |
+          if (!(Test-Path ".\\ngrok\\ngrok.exe")) {
+            Write-Error "Ngrok executable (ngrok.exe) not found in .\\ngrok after extraction."
+            exit 1
+          }
+          Write-Host "Ngrok executable found at .\\ngrok\\ngrok.exe"
+        shell: pwsh
 
-    - name: Enable Remote Desktop Services
-      run: |
-        Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name "fDenyTSConnections" -Value 0
-        Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
-        Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -Name "UserAuthentication" -Value 1
-      shell: pwsh
+      - name: Check Ngrok Version
+        run: .\\ngrok\\ngrok.exe version
+        shell: pwsh
 
-    - name: Create Local User (For Self-Hosted Runner Only)
-      run: |
-        $user = Get-LocalUser -Name "zrdpadmin" -ErrorAction SilentlyContinue
-        if ($null -eq $user) {
-          New-LocalUser -Name "zrdpadmin" -Password (ConvertTo-SecureString -AsPlainText "P@ssw0rd!" -Force) -Description "RDP Admin"
-        }
-      shell: pwsh
+      - name: Authenticate Ngrok
+        run: .\ngrok\ngrok.exe authtoken $Env:NGROK_AUTH_TOKEN
+        env:
+          NGROK_AUTH_TOKEN: ${{ secrets.NGROK_AUTH_TOKEN }}
+        shell: pwsh
 
-    - name: Create Tunnel with Ngrok
-      run: .\ngrok\ngrok.exe tcp 3389
-      shell: pwsh
+      - name: Enable Remote Desktop Services
+        run: |
+          Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name "fDenyTSConnections" -Value 0
+          Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
+          Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -Name "UserAuthentication" -Value 1
+        shell: pwsh
+
+      - name: Create Local User (For Self-Hosted Runner Only)
+        run: |
+          $user = Get-LocalUser -Name "zrdpadmin" -ErrorAction SilentlyContinue
+          if ($null -eq $user) {
+            New-LocalUser -Name "zrdpadmin" -Password (ConvertTo-SecureString -AsPlainText "P@ssw0rd!" -Force) -Description "RDP Admin"
+          }
+        shell: pwsh
+
+      - name: Create Tunnel with Ngrok
+        run: .\ngrok\ngrok.exe tcp 3389
+        shell: pwsh
