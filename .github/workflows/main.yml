@@ -7,22 +7,40 @@ jobs:
     runs-on: windows-latest
 
     steps:
-    - name: Download Ngrok
-      run: Invoke-WebRequest https://bin.equinox.io/c/4VmDzA7iaHb/ngrok-stable-windows-amd64.zip -OutFile ngrok.zip
+    - name: Download Latest Ngrok
+      run: |
+        Invoke-WebRequest -Uri "https://ngrok.com/download" -OutFile "ngrok.zip"
+      shell: pwsh
 
-    - name: Extract Ngrok
-      run: Expand-Archive -Path ngrok.zip -DestinationPath .\ngrok
+    - name: Extract Ngrok Using PowerShell 5
+      run: |
+        powershell.exe -ExecutionPolicy Bypass -Command "Expand-Archive -Path 'ngrok.zip' -DestinationPath 'ngrok' -Force"
+      shell: pwsh
+
+    - name: Verify Ngrok Extraction
+      run: |
+        if (!(Test-Path ".\ngrok\ngrok.exe")) {
+          Write-Host "Ngrok extraction failed. Trying alternate method..."
+          tar -xf ngrok.zip -C ngrok
+        }
+      shell: pwsh
+
+    - name: Check Ngrok Version
+      run: .\ngrok\ngrok.exe version
+      shell: pwsh
 
     - name: Authenticate Ngrok
       run: .\ngrok\ngrok.exe authtoken $Env:NGROK_AUTH_TOKEN
       env:
         NGROK_AUTH_TOKEN: ${{ secrets.NGROK_AUTH_TOKEN }}
+      shell: pwsh
 
     - name: Enable Remote Desktop Services
       run: |
         Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name "fDenyTSConnections" -Value 0
         Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
         Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -Name "UserAuthentication" -Value 1
+      shell: pwsh
 
     - name: Create Local User (For Self-Hosted Runner Only)
       run: |
@@ -34,3 +52,4 @@ jobs:
 
     - name: Create Tunnel with Ngrok
       run: .\ngrok\ngrok.exe tcp 3389
+      shell: pwsh
