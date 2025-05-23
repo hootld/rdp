@@ -15,7 +15,7 @@ jobs:
 
       - name: Download Latest Ngrok
         run: |
-          Invoke-WebRequest -Uri "https://ngrok.com/download/thank-you?platform=windows" -OutFile "ngrok.zip" -UseBasicParsing
+          Invoke-WebRequest -Uri "https://bin.equinox.io/c/4VmDzA7iaHb/ngrok-stable-windows-amd64.zip" -OutFile "ngrok.zip" -UseBasicParsing
         shell: pwsh
 
       - name: Create Ngrok directory
